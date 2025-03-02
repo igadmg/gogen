@@ -7,7 +7,7 @@ import (
 	"os"
 	"runtime/pprof"
 
-	"github.com/igadmg/gog/core"
+	"github.com/igadmg/gogen/core"
 	"github.com/igadmg/goex/gx"
 )
 
