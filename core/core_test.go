@@ -23,7 +23,7 @@ func TestUnmarshalTag(t *testing.T) {
 		assert.Equal(t, len(tag), 2)
 	}
 	{
-		tag, err := UnmarshalTag("layer: 'LayerColonyBuildings'")
+		tag, err := UnmarshalTag("layer: LayerColonyBuildings")
 		assert.NoError(t, err)
 		assert.Equal(t, len(tag), 1)
 	}
@@ -40,7 +40,7 @@ func TestUnmarshalTag(t *testing.T) {
 	}
 
 	{
-		tag, err := UnmarshalTag("new: 'e.Draw', prepare: { Layer: 'Named(LayerPopulation)' }")
+		tag, err := UnmarshalTag("new: e.Draw, prepare: { Layer: 'Named(LayerPopulation)' }")
 		assert.NoError(t, err)
 		assert.Equal(t, len(tag), 2)
 	}

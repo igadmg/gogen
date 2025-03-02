@@ -4,7 +4,6 @@ import (
 	"go/ast"
 	"go/types"
 
-	"github.com/elliotchance/orderedmap/v3"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -18,18 +17,6 @@ type Package struct {
 	name  string
 	defs  map[*ast.Ident]types.Object
 	files []*File
-}
-
-type BaseParameter struct {
-	Base   FieldI
-	Params []string
-	//nps    []NewParameter
-}
-
-type BaseParametersMap = orderedmap.OrderedMap[string, BaseParameter]
-
-func MakeBaseParametersMap() *BaseParametersMap {
-	return orderedmap.NewOrderedMap[string, BaseParameter]()
 }
 
 type TokenI interface {

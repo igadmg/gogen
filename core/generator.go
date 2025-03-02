@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"go/ast"
-	"go/format"
 	"log"
 	"path/filepath"
 	"slices"
@@ -26,18 +25,25 @@ type TypeFactory interface {
 }
 
 type Generator interface {
+	FileName() string
+
 	ParsePackage(patterns []string /*, tags []string*/)
 	Inspect()
 	Prepare()
-	Generate(dir string)
+	Generate() bytes.Buffer
 }
 
 type GeneratorBase struct {
-	Buf bytes.Buffer // Accumulated output.
-	cfg *packages.Config
-	pkg *Package // Package we are scanning.
+	Buf      bytes.Buffer // Accumulated output.
+	cfg      *packages.Config
+	pkg      *Package // Package we are scanning.
+	fileName string
 
 	logf func(format string, args ...any) // test logging hook; nil when not testing
+}
+
+func (g *GeneratorBase) FileName() string {
+	return g.fileName
 }
 
 func (g *GeneratorBase) Print(str string) {
@@ -89,19 +95,6 @@ func (g *GeneratorBase) addPackage(pkg *packages.Package) {
 	}
 }
 
-// Format returns the gofmt-ed contents of the Generator's buffer.
-func (g *GeneratorBase) Format() []byte {
-	src, err := format.Source(g.Buf.Bytes())
-	if err != nil {
-		// Should never happen, but can arise when developing this code.
-		// The user can compile the output to see the error.
-		log.Printf("warning: internal error: invalid Go generated: %s", err)
-		log.Printf("warning: compile the package to analyze the error")
-		return g.Buf.Bytes()
-	}
-	return src
-}
-
 type GeneratorBaseT /*[Type TypeI, Field FieldI, Func FuncI]*/ struct {
 	GeneratorBase
 
@@ -115,8 +108,11 @@ type GeneratorBaseT /*[Type TypeI, Field FieldI, Func FuncI]*/ struct {
 	Funcs  map[string][]FuncI
 }
 
-func MakeGeneratorB /*[Type TypeI, Field FieldI, Func FuncI]*/ () GeneratorBaseT {
+func MakeGeneratorB(fileName string) GeneratorBaseT {
 	return GeneratorBaseT{
+		GeneratorBase: GeneratorBase{
+			fileName: fileName,
+		},
 		Types:  map[string]TypeI{},
 		Fields: []FieldI{},
 		Funcs:  map[string][]FuncI{},
