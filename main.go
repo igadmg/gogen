@@ -1,4 +1,4 @@
-package main
+package gogen
 
 import (
 	"flag"
@@ -18,7 +18,6 @@ var (
 	ecs_f     = flag.Bool("ecs", false, "generate ecs code")
 	gog_f     = flag.Bool("gog", false, "generate gog code")
 	profile_f = flag.String("profile", "", "write cpu profile to `file`")
-	generator core.Generator
 )
 
 func Usage() {
@@ -28,7 +27,7 @@ func Usage() {
 	flag.PrintDefaults()
 }
 
-func main() {
+func Execute(generators ...core.Generator) {
 	log.SetFlags(0)
 	log.SetPrefix("gog: ")
 	flag.Usage = Usage
@@ -54,23 +53,25 @@ func main() {
 
 	var dir string
 
-	/*
-		// TODO(suzmue): accept other patterns for packages (directories, list of files, import paths, etc).
-		if len(args) == 1 && gog.IsDirectory(args[0]) {
-			dir = args[0]
-		} else {
-			dir = gx.Must(os.Getwd())
-		}
+	for _, generator := range generators {
+		/*
+			// TODO(suzmue): accept other patterns for packages (directories, list of files, import paths, etc).
+			if len(args) == 1 && gog.IsDirectory(args[0]) {
+				dir = args[0]
+			} else {
+				dir = gx.Must(os.Getwd())
+			}
 
-		if *ecs_f {
-			generator = ecs.NewGeneratorEcs(gx.Must(os.Getwd()))
-		} else {
-			// Parse the package once.
-			generator = gog.NewGeneratorGog()
-		}
-	*/
+			if *ecs_f {
+				generator = ecs.NewGeneratorEcs(gx.Must(os.Getwd()))
+			} else {
+				// Parse the package once.
+				generator = gog.NewGeneratorGog()
+			}
+		*/
 
-	Run(generator, dir)
+		Run(generator, dir)
+	}
 }
 
 func Run(g core.Generator, dir string) {

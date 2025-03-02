@@ -34,10 +34,12 @@ type Generator interface {
 }
 
 type GeneratorBase struct {
-	Buf      bytes.Buffer // Accumulated output.
-	cfg      *packages.Config
-	pkg      *Package // Package we are scanning.
+	Buf bytes.Buffer // Accumulated output.
+	cfg *packages.Config
+	pkg *Package // Package we are scanning.
+
 	fileName string
+	PkgName  string
 
 	logf func(format string, args ...any) // test logging hook; nil when not testing
 }
@@ -108,10 +110,11 @@ type GeneratorBaseT /*[Type TypeI, Field FieldI, Func FuncI]*/ struct {
 	Funcs  map[string][]FuncI
 }
 
-func MakeGeneratorB(fileName string) GeneratorBaseT {
+func MakeGeneratorB(pkg, fileName string) GeneratorBaseT {
 	return GeneratorBaseT{
 		GeneratorBase: GeneratorBase{
 			fileName: fileName,
+			PkgName:  pkg,
 		},
 		Types:  map[string]TypeI{},
 		Fields: []FieldI{},
