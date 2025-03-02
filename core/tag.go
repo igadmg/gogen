@@ -24,8 +24,7 @@ func MakeTag(tag string) (Tag, error) {
 }
 
 var errTag = fmt.Errorf("failed to parse tag")
-
-var TagNames = make([]string, 0)
+var Tags = make([]string, 0)
 
 func ParseTag(tag *ast.BasicLit) (t Tag, err error) {
 	t = Tag{}
@@ -36,7 +35,7 @@ func ParseTag(tag *ast.BasicLit) (t Tag, err error) {
 	vtag := strings.Trim(tag.Value, "`")
 	stag := reflect.StructTag(vtag)
 
-	for _, tagName := range TagNames {
+	for _, tagName := range Tags {
 		gogtag, ok := stag.Lookup(tagName)
 		if !ok {
 			continue

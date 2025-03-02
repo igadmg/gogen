@@ -25,6 +25,8 @@ type TypeFactory interface {
 }
 
 type Generator interface {
+	Flag() string
+	Tags() []string
 	FileName() string
 
 	ParsePackage(patterns []string /*, tags []string*/)
@@ -38,10 +40,20 @@ type GeneratorBase struct {
 	cfg *packages.Config
 	pkg *Package // Package we are scanning.
 
+	flag     string // cmd line flags
 	fileName string
 	PkgName  string
+	tags     []string // tag names
 
 	logf func(format string, args ...any) // test logging hook; nil when not testing
+}
+
+func (g *GeneratorBase) Flag() string {
+	return g.flag
+}
+
+func (g *GeneratorBase) Tags() []string {
+	return g.tags
 }
 
 func (g *GeneratorBase) FileName() string {
@@ -110,11 +122,13 @@ type GeneratorBaseT /*[Type TypeI, Field FieldI, Func FuncI]*/ struct {
 	Funcs  map[string][]FuncI
 }
 
-func MakeGeneratorB(pkg, fileName string) GeneratorBaseT {
+func MakeGeneratorB(flag, pkg, fileName string, tags ...string) GeneratorBaseT {
 	return GeneratorBaseT{
 		GeneratorBase: GeneratorBase{
+			flag:     flag,
 			fileName: fileName,
 			PkgName:  pkg,
+			tags:     tags,
 		},
 		Types:  map[string]TypeI{},
 		Fields: []FieldI{},
