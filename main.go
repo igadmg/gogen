@@ -50,27 +50,23 @@ func Execute(generators ...core.Generator) {
 	//	// Default: process whole package in current directory.
 	//	args = []string{"."}
 	//}
+	/*
+		// TODO(suzmue): accept other patterns for packages (directories, list of files, import paths, etc).
+		if len(args) == 1 && gog.IsDirectory(args[0]) {
+			dir = args[0]
+		} else {
+			dir = gx.Must(os.Getwd())
+		}
+	*/
 
 	var dir string = gx.Must(os.Getwd())
 
 	for _, generator := range generators {
+		if _, ok := flags[generator.Flag()]; !ok {
+			continue
+		}
+
 		fmt.Printf("Runnug generator %s in %s\n", generator.Flag(), dir)
-		/*
-			// TODO(suzmue): accept other patterns for packages (directories, list of files, import paths, etc).
-			if len(args) == 1 && gog.IsDirectory(args[0]) {
-				dir = args[0]
-			} else {
-				dir = gx.Must(os.Getwd())
-			}
-
-			if *ecs_f {
-				generator = ecs.NewGeneratorEcs(gx.Must(os.Getwd()))
-			} else {
-				// Parse the package once.
-				generator = gog.NewGeneratorGog()
-			}
-		*/
-
 		Run(generator, dir)
 	}
 }
