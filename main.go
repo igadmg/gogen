@@ -54,6 +54,7 @@ func Execute(generators ...core.Generator) {
 	var dir string = gx.Must(os.Getwd())
 
 	for _, generator := range generators {
+		fmt.Printf("Runnug generator %s in %s\n", generator.Flag(), dir)
 		/*
 			// TODO(suzmue): accept other patterns for packages (directories, list of files, import paths, etc).
 			if len(args) == 1 && gog.IsDirectory(args[0]) {

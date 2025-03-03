@@ -167,7 +167,6 @@ func (g *GeneratorBaseT) NewType(t TypeI, spec *ast.TypeSpec) (TypeI, error) {
 
 			if f.IsMeta() {
 				et.Tag = f.GetTag()
-				//et.Etype = et.Tag.GetEcsType()
 				continue
 			}
 
