@@ -225,9 +225,14 @@ func (g *GeneratorBaseT) NewFunc(f FuncI, decl *ast.FuncDecl) (FuncI, error) {
 
 		if decl.Doc != nil {
 			doc := decl.Doc.Text()
-			if strings.HasPrefix(doc, "gog:") {
-				doc = strings.Trim(doc[4:], "\"\n \t")
-				ef.Tag = Tag{gx.Should(UnmarshalTag(doc))}
+			for _, tag := range g.Tags() {
+				if strings.HasPrefix(doc, tag+":") {
+					doc = strings.Trim(doc[len(tag)+1:], "\"\n \t")
+					if ef.Tag.Data == nil {
+						ef.Tag.Data = TagData{}
+					}
+					ef.Tag.Data[tag] = Tag{gx.Should(UnmarshalTag(doc))}
+				}
 			}
 		}
 

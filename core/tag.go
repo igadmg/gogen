@@ -74,16 +74,16 @@ func (t Tag) HasField(name string) bool {
 	return ok
 }
 
-func (t Tag) GetField(name string) string {
+func (t Tag) GetField(name string) (string, bool) {
 	v, ok := t.Data[name]
 	if ok {
 		switch vv := v.(type) {
 		case string:
-			return vv
+			return vv, true
 		}
 	}
 
-	return ""
+	return "", false
 }
 
 func (t *Tag) SetField(name string, v any) {
@@ -94,18 +94,20 @@ func (t *Tag) SetField(name string, v any) {
 	t.Data[name] = v
 }
 
-func (t Tag) GetObject(name string) Tag {
+func (t Tag) GetObject(name string) (Tag, bool) {
 	v, ok := t.Data[name]
 	if ok {
 		switch vv := v.(type) {
+		case Tag:
+			return vv, true
 		case TagData:
-			return Tag{vv}
+			return Tag{vv}, true
 		case yaml.Node:
 			vm := TagData{}
 			vv.Decode(vm)
-			return Tag{vm}
+			return Tag{vm}, true
 		}
 	}
 
-	return Tag{}
+	return Tag{}, false
 }

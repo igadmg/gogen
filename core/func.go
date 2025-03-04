@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"go/ast"
 	"iter"
+	"slices"
+	"strings"
 
+	"deedles.dev/xiter"
 	"github.com/igadmg/goex/astex"
 )
 
@@ -87,4 +90,20 @@ func EnumFuncsSeq(x iter.Seq[FuncI]) iter.Seq[*Func] {
 			}
 		}
 	}
+}
+
+func (f *Func) DeclArguments() string {
+	return strings.Join(slices.Collect(
+		xiter.Map(slices.Values(f.Arguments), func(arg Parameter) string {
+			return fmt.Sprintf("%s %s", arg.Name, arg.Type)
+		})),
+		", ")
+}
+
+func (f *Func) CallArguments() string {
+	return strings.Join(slices.Collect(
+		xiter.Map(slices.Values(f.Arguments), func(arg Parameter) string {
+			return arg.Name
+		})),
+		", ")
 }
