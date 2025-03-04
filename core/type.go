@@ -2,6 +2,7 @@ package core
 
 import (
 	"iter"
+	"maps"
 	"slices"
 )
 
@@ -10,6 +11,7 @@ type TypeI interface {
 
 	BasesSeq() iter.Seq[FieldI]
 	FieldsSeq() iter.Seq[FieldI]
+	FuncsSeq() iter.Seq[FuncI]
 
 	CanCall(name string) bool
 	HasFunction(name string) bool
@@ -57,6 +59,10 @@ func (t Type) BasesSeq() iter.Seq[FieldI] {
 
 func (t Type) FieldsSeq() iter.Seq[FieldI] {
 	return slices.Values(t.Fields)
+}
+
+func (t Type) FuncsSeq() iter.Seq[FuncI] {
+	return maps.Values(t.Funcs)
 }
 
 func (t Type) CanCall(name string) bool {
