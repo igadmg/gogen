@@ -250,6 +250,11 @@ func (g *GeneratorBaseT) NewFunc(f FuncI, decl *ast.FuncDecl) (FuncI, error) {
 			if !ok {
 				return nil, fmt.Errorf("failed to get full type name")
 			}
+
+			ef.DeclType, ok = astex.GetFieldDeclTypeName(rtype)
+			if !ok {
+				return nil, fmt.Errorf("failed to get field type name")
+			}
 		}
 
 		params, ok := astex.FuncDeclParams(decl)

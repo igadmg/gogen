@@ -49,6 +49,7 @@ type FuncI interface {
 type Func struct {
 	Token
 	FType     string
+	DeclType  string
 	Arguments []Parameter
 	Return    Type
 }
