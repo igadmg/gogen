@@ -187,18 +187,26 @@ func (g *GeneratorBaseT) NewField(f FieldI, spec *ast.Field) (FieldI, error) {
 
 	switch ef := f.(type) {
 	case *Field:
-		var err error
+		var ok bool
 
 		if len(spec.Names) > 0 {
 			ef.Name = spec.Names[0].Name
 		}
 
-		ef.decltype, err = astex.GetFieldDeclTypeName(spec.Type)
-		if err != nil {
-			return nil, err
+		ef.decltype, ok = astex.GetFieldDeclTypeName(spec.Type)
+		if !ok {
+			return nil, fmt.Errorf("failed to get field decl type name")
 		}
-		ef.TypeName = astex.ExprGetFullTypeName(spec.Type)
-		ef.CallTypeName = astex.ExprGetCallTypeName(spec.Type)
+
+		ef.TypeName, ok = astex.ExprGetFullTypeName(spec.Type)
+		if !ok {
+			return nil, fmt.Errorf("failed to get full type name")
+		}
+
+		ef.CallTypeName, ok = astex.ExprGetCallTypeName(spec.Type)
+		if !ok {
+			return nil, fmt.Errorf("failed to get call type name")
+		}
 
 		_, ef.IsArray = spec.Type.(*ast.ArrayType)
 
@@ -236,13 +244,16 @@ func (g *GeneratorBaseT) NewFunc(f FuncI, decl *ast.FuncDecl) (FuncI, error) {
 			}
 		}
 
-		rtype, err := astex.FuncDeclRecvType(decl)
-		if err == nil {
-			ef.FType = astex.ExprGetFullTypeName(rtype)
+		rtype, ok := astex.FuncDeclRecvType(decl)
+		if ok {
+			ef.FType, ok = astex.ExprGetFullTypeName(rtype)
+			if !ok {
+				return nil, fmt.Errorf("failed to get full type name")
+			}
 		}
 
-		params, err := astex.FuncDeclParams(decl)
-		if err == nil {
+		params, ok := astex.FuncDeclParams(decl)
+		if ok {
 			ef.Arguments = slices.Collect(
 				xiter.Map(slices.Values(params), func(f *ast.Field) Parameter {
 					p, _ := MakeParameter(f)
