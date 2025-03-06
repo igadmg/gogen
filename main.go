@@ -62,7 +62,7 @@ func Execute(generators ...core.Generator) {
 	var dir string = gx.Must(os.Getwd())
 
 	for _, generator := range generators {
-		if _, ok := flags[generator.Flag()]; !ok {
+		if f, ok := flags[generator.Flag()]; !ok || !*f {
 			continue
 		}
 
