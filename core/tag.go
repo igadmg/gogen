@@ -83,7 +83,7 @@ func (t Tag) GetField(name string) (string, bool) {
 		}
 	}
 
-	return "", false
+	return "", ok
 }
 
 func (t *Tag) SetField(name string, v any) {
