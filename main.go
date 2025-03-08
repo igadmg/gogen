@@ -9,11 +9,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime/pprof"
 	"slices"
 	"strings"
 
 	"github.com/igadmg/goex/gx"
+	"github.com/igadmg/goex/pprofex"
 	"github.com/igadmg/gogen/core"
 )
 
@@ -76,15 +76,7 @@ func Run(g core.Generator, dir string) {
 	outputName := filepath.Join(dir, strings.ToLower(baseName))
 
 	if *profile_f {
-		f, err := os.Create(outputName + ".prof")
-		if err != nil {
-			log.Fatal("could not create CPU profile: ", err)
-		}
-		defer f.Close() // error handling omitted for example
-		if err := pprof.StartCPUProfile(f); err != nil {
-			log.Fatal("could not start CPU profile: ", err)
-		}
-		defer pprof.StopCPUProfile()
+		defer gx.Must(pprofex.WriteCPUProfile(outputName + ".prof"))()
 	}
 
 	g.ParsePackage([]string{dir})
