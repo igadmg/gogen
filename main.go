@@ -18,6 +18,7 @@ import (
 )
 
 var (
+	pkg_f     = flag.String("pkg", "game", "define package name used during generation")
 	profile_f = flag.Bool("profile", false, "write cpu profile to `file`")
 )
 
@@ -41,7 +42,7 @@ func Execute(generators ...core.Generator) {
 	core.Tags = slices.Collect(maps.Keys(tags))
 
 	log.SetFlags(0)
-	log.SetPrefix("gog: ")
+	log.SetPrefix("gogen: ")
 	flag.Usage = Usage
 	flag.Parse()
 
@@ -72,7 +73,7 @@ func Execute(generators ...core.Generator) {
 }
 
 func Run(g core.Generator, dir string) {
-	baseName := g.FileName()
+	baseName := "0.gen_" + g.Flag() + ".go"
 	outputName := filepath.Join(dir, strings.ToLower(baseName))
 
 	if *profile_f {
@@ -84,7 +85,7 @@ func Run(g core.Generator, dir string) {
 	g.Prepare()
 
 	//func() {
-	code := g.Generate()
+	code := g.Generate(*pkg_f)
 
 	log.Printf("Formatting file %s", outputName)
 	src, err := format.Source(code.Bytes())

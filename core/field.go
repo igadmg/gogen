@@ -30,7 +30,7 @@ func (f *Field) Clone() any {
 }
 
 func (f Field) IsMeta() bool {
-	return f.TypeName == "MetaTag"
+	return f.TypeName == "ecs.MetaTag"
 }
 
 func (f Field) GetType() TypeI {
