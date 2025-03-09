@@ -267,9 +267,10 @@ func (g *GeneratorBaseT) GetType(name string) (t TypeI, ok bool) {
 }
 
 func (g *GeneratorBaseT) GetFuncs(t TypeI) []FuncI {
-	f, _ := g.Funcs[t.GetName()]
-	return f
+	return g.Funcs[t.GetName()]
 }
+
+var reportedTypes map[string]struct{} = map[string]struct{}{}
 
 func (g *GeneratorBaseT) Prepare() {
 	for _, f := range g.Fields {
@@ -280,7 +281,10 @@ func (g *GeneratorBaseT) Prepare() {
 
 		err := fb.Prepare(g.G)
 		if err != nil {
-			fmt.Printf("Error: %v\n", err)
+			if _, ok := reportedTypes[f.GetTypeName()]; !ok {
+				reportedTypes[f.GetTypeName()] = struct{}{}
+				fmt.Printf("Error: %v\n", err)
+			}
 		}
 	}
 
