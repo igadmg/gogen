@@ -262,6 +262,7 @@ func (g *GeneratorBaseT) NewFunc(f FuncI, decl *ast.FuncDecl) (FuncI, error) {
 }
 
 func (g *GeneratorBaseT) GetType(name string) (t TypeI, ok bool) {
+	name = strings.TrimLeft(name, " *")
 	t, ok = g.Types[name]
 	return
 }
