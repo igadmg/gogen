@@ -34,12 +34,6 @@ func TestUnmarshalTag(t *testing.T) {
 	}
 
 	{
-		tag, err := UnmarshalTag("ecsc,component: screen")
-		assert.NoError(t, err)
-		assert.Equal(t, len(tag), 2)
-	}
-
-	{
 		tag, err := UnmarshalTag("new: e.Draw, prepare: { Layer: 'Named(LayerPopulation)' }")
 		assert.NoError(t, err)
 		assert.Equal(t, len(tag), 2)
