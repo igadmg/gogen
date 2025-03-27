@@ -151,7 +151,7 @@ func (g *GeneratorBaseT) NewType(t TypeI, spec *ast.TypeSpec) (TypeI, error) {
 			}
 
 			if len(f.GetName()) == 0 {
-				et.Bases = append(et.Bases, f)
+				et.BaseFields = append(et.BaseFields, f)
 
 				continue
 			}

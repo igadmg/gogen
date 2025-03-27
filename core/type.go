@@ -26,7 +26,8 @@ type TypeBuilder interface {
 type Type struct {
 	Token
 	Subclasses []TypeI
-	Bases      []FieldI // base types
+	BaseFields []FieldI // base types go lang way (deprecated for archetype)
+	Extends    []TypeI  // extends for archetypes
 	Fields     []FieldI
 	Funcs      map[string]FuncI
 }
@@ -54,7 +55,7 @@ func (t Type) GetName() string {
 }
 
 func (t Type) BasesSeq() iter.Seq[FieldI] {
-	return slices.Values(t.Bases)
+	return slices.Values(t.BaseFields)
 }
 
 func (t Type) FieldsSeq() iter.Seq[FieldI] {
@@ -75,7 +76,7 @@ func (t Type) HasFunction(name string) bool {
 		return true
 	}
 
-	for _, base := range t.Bases {
+	for _, base := range t.BaseFields {
 		if bt := base.GetType(); bt != nil && bt.HasFunction(name) {
 			return true
 		}
