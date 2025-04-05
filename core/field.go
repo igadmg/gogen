@@ -12,16 +12,19 @@ type FieldI interface {
 }
 
 type FieldBuilder interface {
+	SetPackagedTypeName(name string)
+
 	Prepare(tf TypeFactory) error
 }
 
 type Field struct {
 	Token
-	Type         TypeI
-	TypeName     string
-	CallTypeName string
-	decltype     string
-	IsArray      bool
+	Type             TypeI
+	TypeName         string
+	PackagedTypeName string
+	CallTypeName     string
+	decltype         string
+	IsArray          bool
 }
 
 func (f *Field) Clone() any {
@@ -45,9 +48,14 @@ func (f Field) DeclType() string {
 	return f.decltype
 }
 
+func (f *Field) SetPackagedTypeName(name string) {
+	f.PackagedTypeName = name
+	//f.CallTypeName = name
+}
+
 func (f *Field) Prepare(tf TypeFactory) error {
 	var ok bool
-	f.Type, ok = tf.GetType(f.TypeName)
+	f.Type, ok = tf.GetType(f.PackagedTypeName)
 	if !ok {
 		return fmt.Errorf("type %s not found", f.TypeName)
 	}

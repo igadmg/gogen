@@ -35,19 +35,22 @@ type Type struct {
 var _ TypeI = (*Type)(nil)
 var _ TypeBuilder = (*Type)(nil)
 
-func MakeType() Type {
+func MakeType(pkg *Package) Type {
 	return Type{
+		Token: Token{
+			Package: pkg,
+		},
 		Funcs: map[string]FuncI{},
 	}
 }
 
-func NewType() *Type {
-	t := MakeType()
+func NewType(pkg *Package) *Type {
+	t := MakeType(pkg)
 	return t.New()
 }
 
-func (t Type) New() *Type {
-	return &t
+func (t *Type) New() *Type {
+	return t
 }
 
 func (t Type) GetName() string {

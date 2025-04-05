@@ -36,7 +36,7 @@ type Generator interface {
 type GeneratorBase struct {
 	Buf  bytes.Buffer // Accumulated output.
 	cfg  *packages.Config
-	pkg  *Package
+	Pkg  *Package
 	Pkgs []*Package // Package we are scanning.
 
 	flag string   // cmd line flags
@@ -66,11 +66,11 @@ func (g *GeneratorBase) Printfln(format string, args ...any) {
 }
 
 func (g *GeneratorBase) GetPackage() *Package {
-	return g.pkg
+	return g.Pkg
 }
 
 func (g *GeneratorBase) LocalTypeName(t TypeI) string {
-	if t.GetPackage() == g.pkg {
+	if t.GetPackage() == g.Pkg {
 		return t.GetName()
 	}
 
@@ -104,7 +104,7 @@ func MakeGeneratorB(flag string, tags ...string) GeneratorBaseT {
 
 func (g *GeneratorBaseT) NewType(t TypeI, spec *ast.TypeSpec) (TypeI, error) {
 	if t == nil {
-		t = MakeType().New()
+		t = NewType(g.Pkg)
 	}
 
 	switch et := t.(type) {
@@ -120,6 +120,15 @@ func (g *GeneratorBaseT) NewType(t TypeI, spec *ast.TypeSpec) (TypeI, error) {
 			f, err := g.G.NewField(nil, field)
 			if err != nil {
 				continue
+			}
+
+			if fb, ok := f.(FieldBuilder); ok {
+				tp := strings.Split(f.GetTypeName(), ".")
+				if len(tp) == 1 {
+					fb.SetPackagedTypeName(et.Package.Name + "." + f.GetTypeName())
+				} else {
+					fb.SetPackagedTypeName(f.GetTypeName())
+				}
 			}
 
 			if len(f.GetName()) == 0 {
@@ -182,7 +191,7 @@ func (g *GeneratorBaseT) NewField(f FieldI, spec *ast.Field) (FieldI, error) {
 
 func (g *GeneratorBaseT) NewFunc(f FuncI, decl *ast.FuncDecl) (FuncI, error) {
 	if f == nil {
-		f = &Func{}
+		f = NewFunc(g.Pkg)
 		defer func() {
 			if id := f.GetFullTypeName(); id != "" {
 				g.Funcs[id] = append(g.Funcs[id], f)
@@ -239,7 +248,7 @@ func (g *GeneratorBaseT) GetType(name string) (t TypeI, ok bool) {
 	if len(names) > 1 {
 		t, ok = g.Types[name]
 	} else {
-		t, ok = g.Types[g.pkg.Name+"."+name]
+		t, ok = g.Types[g.Pkg.Name+"."+name]
 	}
 	return
 }
@@ -291,7 +300,7 @@ func (g *GeneratorBaseT) Prepare() {
 func (g *GeneratorBaseT) Inspect(pkgs []*Package) {
 	g.Pkgs = pkgs
 	for _, pkg := range g.Pkgs {
-		g.pkg = pkg
+		g.Pkg = pkg
 		for _, file := range pkg.Files {
 			// Set the state for this run of the walker.
 			//file.values = nil
@@ -302,7 +311,7 @@ func (g *GeneratorBaseT) Inspect(pkgs []*Package) {
 						fn := filepath.Base(file.Pkg.Pkg.Fset.Position(decl.Package).Filename)
 						return !strings.HasPrefix(fn, "0.gen")
 					default:
-						return g.InspectCode(pkg, decl)
+						return g.InspectCode(decl)
 					}
 				})
 			}
@@ -310,7 +319,7 @@ func (g *GeneratorBaseT) Inspect(pkgs []*Package) {
 	}
 }
 
-func (g *GeneratorBaseT) InspectCode(pkg *Package, node ast.Node) (follow bool) {
+func (g *GeneratorBaseT) InspectCode(node ast.Node) (follow bool) {
 	switch decl := node.(type) {
 	case *ast.GenDecl:
 		for _, spec := range decl.Specs {
@@ -321,8 +330,7 @@ func (g *GeneratorBaseT) InspectCode(pkg *Package, node ast.Node) (follow bool) 
 					continue
 				}
 
-				t.SetPackage(pkg)
-				pkg.Types[t.GetFullName()] = t
+				g.Pkg.Types[t.GetFullName()] = t
 				g.Types[t.GetFullName()] = t
 			}
 		}
@@ -333,8 +341,7 @@ func (g *GeneratorBaseT) InspectCode(pkg *Package, node ast.Node) (follow bool) 
 			return false
 		}
 
-		f.SetPackage(pkg)
-		pkg.Funcs[f.GetName()] = append(pkg.Funcs[f.GetName()], f)
+		g.Pkg.Funcs[f.GetName()] = append(g.Pkg.Funcs[f.GetName()], f)
 
 		return false
 	}

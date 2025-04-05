@@ -54,6 +54,23 @@ type Func struct {
 	Return    Type
 }
 
+func MakeFunc(pkg *Package) Func {
+	return Func{
+		Token: Token{
+			Package: pkg,
+		},
+	}
+}
+
+func NewFunc(pkg *Package) *Func {
+	f := MakeFunc(pkg)
+	return &f
+}
+
+func (f *Func) New() *Func {
+	return f
+}
+
 func (f Func) GetFullTypeName() string {
 	return f.FType
 }
