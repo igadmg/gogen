@@ -120,7 +120,6 @@ func Run(g core.Generator, pkgNames []string) {
 			}))
 
 	g.Inspect(ppkg)
-	g.Prepare()
 
 	for _, pkg := range ppkg {
 		func(pkg *core.Package) {

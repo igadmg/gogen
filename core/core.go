@@ -18,8 +18,9 @@ type Package struct {
 	Defs  map[*ast.Ident]types.Object
 	Files []*File
 
-	Types map[string]TypeI
-	Funcs map[string][]FuncI
+	Types  map[string]TypeI
+	Fields []FieldI
+	Funcs  map[string][]FuncI
 }
 
 type TokenI interface {
