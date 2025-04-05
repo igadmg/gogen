@@ -24,6 +24,7 @@ type Package struct {
 
 type TokenI interface {
 	GetName() string
+	GetFullName() string
 	GetTag() Tag
 	GetPackage() *Package
 	SetPackage(pkg *Package)
@@ -48,6 +49,10 @@ func MakeToken(name string, tag Tag) Token {
 
 func (t Token) GetName() string {
 	return t.Name
+}
+
+func (t Token) GetFullName() string {
+	return t.Package.Name + "." + t.Name
 }
 
 func (t Token) GetTag() Tag {

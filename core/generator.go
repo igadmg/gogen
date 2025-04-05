@@ -15,6 +15,7 @@ import (
 )
 
 type TypeFactory interface {
+	GetPackage() *Package
 	NewType(t TypeI, spec *ast.TypeSpec) (TypeI, error)
 	NewField(f FieldI, spec *ast.Field) (FieldI, error)
 	NewFunc(f FuncI, spec *ast.FuncDecl) (FuncI, error)
@@ -35,6 +36,7 @@ type Generator interface {
 type GeneratorBase struct {
 	Buf  bytes.Buffer // Accumulated output.
 	cfg  *packages.Config
+	pkg  *Package
 	Pkgs []*Package // Package we are scanning.
 
 	flag string   // cmd line flags
@@ -61,6 +63,18 @@ func (g *GeneratorBase) Printf(format string, args ...any) {
 
 func (g *GeneratorBase) Printfln(format string, args ...any) {
 	fmt.Fprintf(&g.Buf, format+"\n", args...)
+}
+
+func (g *GeneratorBase) GetPackage() *Package {
+	return g.pkg
+}
+
+func (g *GeneratorBase) LocalTypeName(t TypeI) string {
+	if t.GetPackage() == g.pkg {
+		return t.GetName()
+	}
+
+	return t.GetFullName()
 }
 
 type GeneratorBaseT struct {
@@ -91,9 +105,6 @@ func MakeGeneratorB(flag string, tags ...string) GeneratorBaseT {
 func (g *GeneratorBaseT) NewType(t TypeI, spec *ast.TypeSpec) (TypeI, error) {
 	if t == nil {
 		t = MakeType().New()
-		defer func() {
-			g.Types[t.GetName()] = t
-		}()
 	}
 
 	switch et := t.(type) {
@@ -224,7 +235,12 @@ func (g *GeneratorBaseT) NewFunc(f FuncI, decl *ast.FuncDecl) (FuncI, error) {
 
 func (g *GeneratorBaseT) GetType(name string) (t TypeI, ok bool) {
 	name = strings.TrimLeft(name, " *")
-	t, ok = g.Types[name]
+	names := strings.Split(name, ".")
+	if len(names) > 1 {
+		t, ok = g.Types[name]
+	} else {
+		t, ok = g.Types[g.pkg.Name+"."+name]
+	}
 	return
 }
 
@@ -275,6 +291,7 @@ func (g *GeneratorBaseT) Prepare() {
 func (g *GeneratorBaseT) Inspect(pkgs []*Package) {
 	g.Pkgs = pkgs
 	for _, pkg := range g.Pkgs {
+		g.pkg = pkg
 		for _, file := range pkg.Files {
 			// Set the state for this run of the walker.
 			//file.values = nil
@@ -305,7 +322,8 @@ func (g *GeneratorBaseT) InspectCode(pkg *Package, node ast.Node) (follow bool) 
 				}
 
 				t.SetPackage(pkg)
-				pkg.Types[t.GetName()] = t
+				pkg.Types[t.GetFullName()] = t
+				g.Types[t.GetFullName()] = t
 			}
 		}
 		return false
