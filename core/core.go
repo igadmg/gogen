@@ -8,20 +8,25 @@ import (
 )
 
 type File struct {
-	pkg  *Package  // Package to which this file belongs.
-	file *ast.File // Parsed AST.
+	Pkg  *Package  // Package to which this file belongs.
+	File *ast.File // Parsed AST.
 }
 
 type Package struct {
-	pkg   *packages.Package
-	name  string
-	defs  map[*ast.Ident]types.Object
-	files []*File
+	Pkg   *packages.Package
+	Name  string
+	Defs  map[*ast.Ident]types.Object
+	Files []*File
+
+	Types map[string]TypeI
+	Funcs map[string][]FuncI
 }
 
 type TokenI interface {
 	GetName() string
 	GetTag() Tag
+	GetPackage() *Package
+	SetPackage(pkg *Package)
 }
 
 type TokenM interface {
@@ -29,8 +34,9 @@ type TokenM interface {
 }
 
 type Token struct {
-	Name string
-	Tag  Tag
+	Name    string
+	Tag     Tag
+	Package *Package
 }
 
 func MakeToken(name string, tag Tag) Token {
@@ -50,4 +56,12 @@ func (t Token) GetTag() Tag {
 
 func (t *Token) SetTag(tag Tag) {
 	t.Tag = tag
+}
+
+func (t Token) GetPackage() *Package {
+	return t.Package
+}
+
+func (t *Token) SetPackage(pkg *Package) {
+	t.Package = pkg
 }

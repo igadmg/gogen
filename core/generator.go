@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"go/ast"
-	"log"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -28,21 +27,20 @@ type Generator interface {
 	Flag() string
 	Tags() []string
 
-	ParsePackage(patterns []string /*, tags []string*/)
-	Inspect()
+	Inspect(pkgs []*Package)
 	Prepare()
-	Generate(pkg string) bytes.Buffer
+	Generate(pkg *Package) bytes.Buffer
 }
 
 type GeneratorBase struct {
-	Buf bytes.Buffer // Accumulated output.
-	cfg *packages.Config
-	pkg *Package // Package we are scanning.
+	Buf  bytes.Buffer // Accumulated output.
+	cfg  *packages.Config
+	Pkgs []*Package // Package we are scanning.
 
 	flag string   // cmd line flags
 	tags []string // tag names
 
-	logf func(format string, args ...any) // test logging hook; nil when not testing
+	//logf func(format string, args ...any) // test logging hook; nil when not testing
 }
 
 func (g *GeneratorBase) Flag() string {
@@ -63,43 +61,6 @@ func (g *GeneratorBase) Printf(format string, args ...any) {
 
 func (g *GeneratorBase) Printfln(format string, args ...any) {
 	fmt.Fprintf(&g.Buf, format+"\n", args...)
-}
-
-func (g *GeneratorBase) ParsePackage(patterns []string /*, tags []string*/) {
-	g.cfg = &packages.Config{
-		Mode: packages.NeedName | packages.NeedFiles | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedSyntax,
-		// TODO: Need to think about constants in test files. Maybe write type_string_test.go
-		// in a separate pass? For later.
-		Tests: false,
-		//BuildFlags: []string{fmt.Sprintf("-tags=%s", strings.Join(tags, " "))},
-		Logf: g.logf,
-	}
-	pkgs, err := packages.Load(g.cfg, patterns...)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if len(pkgs) != 1 {
-		log.Fatalf("error: %d packages matching %v", len(pkgs), strings.Join(patterns, " "))
-	}
-	g.addPackage(pkgs[0])
-}
-
-// addPackage adds a type checked Package and its syntax files to the generator.
-func (g *GeneratorBase) addPackage(pkg *packages.Package) {
-	g.pkg = &Package{
-		pkg:   pkg,
-		name:  pkg.Name,
-		defs:  pkg.TypesInfo.Defs,
-		files: make([]*File, len(pkg.Syntax)),
-	}
-
-	for i, file := range pkg.Syntax {
-		f := &File{
-			file: file,
-			pkg:  g.pkg,
-		}
-		g.pkg.files[i] = f
-	}
 }
 
 type GeneratorBaseT struct {
@@ -311,42 +272,51 @@ func (g *GeneratorBaseT) Prepare() {
 	}
 }
 
-func (g *GeneratorBaseT) Inspect() {
-	for _, file := range g.pkg.files {
-		// Set the state for this run of the walker.
-		//file.values = nil
-		if file.file != nil {
-			ast.Inspect(file.file, func(n ast.Node) bool {
-				switch decl := n.(type) {
-				case *ast.File:
-					fn := filepath.Base(file.pkg.pkg.Fset.Position(decl.Package).Filename)
-					return !strings.HasPrefix(fn, "0.gen")
-				default:
-					return g.InspectCode(decl)
-				}
-			})
+func (g *GeneratorBaseT) Inspect(pkgs []*Package) {
+	g.Pkgs = pkgs
+	for _, pkg := range g.Pkgs {
+		for _, file := range pkg.Files {
+			// Set the state for this run of the walker.
+			//file.values = nil
+			if file.File != nil {
+				ast.Inspect(file.File, func(n ast.Node) bool {
+					switch decl := n.(type) {
+					case *ast.File:
+						fn := filepath.Base(file.Pkg.Pkg.Fset.Position(decl.Package).Filename)
+						return !strings.HasPrefix(fn, "0.gen")
+					default:
+						return g.InspectCode(pkg, decl)
+					}
+				})
+			}
 		}
 	}
 }
 
-func (g *GeneratorBaseT) InspectCode(node ast.Node) (follow bool) {
+func (g *GeneratorBaseT) InspectCode(pkg *Package, node ast.Node) (follow bool) {
 	switch decl := node.(type) {
 	case *ast.GenDecl:
 		for _, spec := range decl.Specs {
 			switch tspec := spec.(type) {
 			case *ast.TypeSpec:
-				_, err := g.G.NewType(nil, tspec)
+				t, err := g.G.NewType(nil, tspec)
 				if err != nil {
 					continue
 				}
+
+				t.SetPackage(pkg)
+				pkg.Types[t.GetName()] = t
 			}
 		}
 		return false
 	case *ast.FuncDecl:
-		_, err := g.G.NewFunc(nil, decl)
+		f, err := g.G.NewFunc(nil, decl)
 		if err != nil {
 			return false
 		}
+
+		f.SetPackage(pkg)
+		pkg.Funcs[f.GetName()] = append(pkg.Funcs[f.GetName()], f)
 
 		return false
 	}

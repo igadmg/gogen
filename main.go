@@ -12,13 +12,14 @@ import (
 	"slices"
 	"strings"
 
+	"deedles.dev/xiter"
 	"github.com/igadmg/goex/gx"
 	"github.com/igadmg/goex/pprofex"
 	"github.com/igadmg/gogen/core"
+	"golang.org/x/tools/go/packages"
 )
 
 var (
-	pkg_f     = flag.String("pkg", "game", "define package name used during generation")
 	profile_f = flag.Bool("profile", false, "write cpu profile to `file`")
 )
 
@@ -46,11 +47,13 @@ func Execute(generators ...core.Generator) {
 	flag.Usage = Usage
 	flag.Parse()
 
-	//args := flag.Args()
-	//if len(args) == 0 {
-	//	// Default: process whole package in current directory.
-	//	args = []string{"."}
-	//}
+	var dir []string
+	args := flag.Args()
+	if len(args) > 0 {
+		dir = args
+	} else {
+		dir = []string{gx.Must(os.Getwd())}
+	}
 	/*
 		// TODO(suzmue): accept other patterns for packages (directories, list of files, import paths, etc).
 		if len(args) == 1 && gog.IsDirectory(args[0]) {
@@ -59,8 +62,6 @@ func Execute(generators ...core.Generator) {
 			dir = gx.Must(os.Getwd())
 		}
 	*/
-
-	var dir string = gx.Must(os.Getwd())
 
 	for _, generator := range generators {
 		if f, ok := flags[generator.Flag()]; !ok || !*f {
@@ -72,46 +73,86 @@ func Execute(generators ...core.Generator) {
 	}
 }
 
-func Run(g core.Generator, dir string) {
+func Run(g core.Generator, pkgNames []string) {
 	baseName := "0.gen_" + g.Flag() + ".go"
-	outputName := filepath.Join(dir, strings.ToLower(baseName))
 
 	if *profile_f {
-		defer gx.Must(pprofex.WriteCPUProfile(outputName + ".prof"))()
+		defer gx.Must(pprofex.WriteCPUProfile(baseName + ".prof"))()
 	}
 
-	g.ParsePackage([]string{dir})
-	g.Inspect()
-	g.Prepare()
-
-	//func() {
-	code := g.Generate(*pkg_f)
-
-	log.Printf("Formatting file %s", outputName)
-	src, err := format.Source(code.Bytes())
+	cfg := &packages.Config{
+		Mode: packages.NeedName | packages.NeedFiles | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedSyntax,
+		// TODO: Need to think about constants in test files. Maybe write type_string_test.go
+		// in a separate pass? For later.
+		Tests: false,
+		//BuildFlags: []string{fmt.Sprintf("-tags=%s", strings.Join(tags, " "))},
+		//Logf: g.logf,
+	}
+	pkgs, err := packages.Load(cfg, pkgNames...)
 	if err != nil {
-		// Should never happen, but can arise when developing this code.
-		// The user can compile the output to see the error.
-		log.Printf("warning: internal error: invalid Go generated: %s", err)
-		log.Printf("warning: compile the package to analyze the error")
-
-		os.WriteFile(outputName, code.Bytes(), 0644)
-		return
-	}
-
-	// Write to file.
-	log.Printf("Writing file %s", outputName)
-	err = os.WriteFile(outputName, src, 0644)
-	if err != nil {
-		log.Fatalf("writing output: %s", err)
-	}
-	log.Printf("Formatting file %s", outputName)
-
-	lint := exec.Command("go", "run", "golang.org/x/tools/cmd/goimports", "-w", outputName)
-	if err := lint.Run(); err != nil {
 		log.Fatal(err)
 	}
+	if len(pkgs) == 0 {
+		log.Fatalf("error: %d packages matching %v", len(pkgs), strings.Join(pkgNames, " "))
+	}
 
-	log.Printf("Done file %s", outputName)
-	//}()
+	ppkg := slices.Collect(
+		xiter.Map(slices.Values(pkgs),
+			func(pkg *packages.Package) *core.Package {
+				lpkg := &core.Package{
+					Pkg:   pkg,
+					Name:  pkg.Name,
+					Defs:  pkg.TypesInfo.Defs,
+					Files: make([]*core.File, len(pkg.Syntax)),
+					Types: map[string]core.TypeI{},
+					Funcs: map[string][]core.FuncI{},
+				}
+
+				for i, file := range pkg.Syntax {
+					f := &core.File{
+						File: file,
+						Pkg:  lpkg,
+					}
+					lpkg.Files[i] = f
+				}
+
+				return lpkg
+			}))
+
+	g.Inspect(ppkg)
+	g.Prepare()
+
+	for _, pkg := range ppkg {
+		func(pkg *core.Package) {
+			outputName := filepath.Join(pkg.Pkg.Dir, strings.ToLower(baseName))
+			code := g.Generate(pkg)
+
+			log.Printf("Formatting file %s", outputName)
+			src, err := format.Source(code.Bytes())
+			if err != nil {
+				// Should never happen, but can arise when developing this code.
+				// The user can compile the output to see the error.
+				log.Printf("warning: internal error: invalid Go generated: %s", err)
+				log.Printf("warning: compile the package to analyze the error")
+
+				os.WriteFile(outputName, code.Bytes(), 0644)
+				return
+			}
+
+			// Write to file.
+			log.Printf("Writing file %s", outputName)
+			err = os.WriteFile(outputName, src, 0644)
+			if err != nil {
+				log.Fatalf("writing output: %s", err)
+			}
+			log.Printf("Formatting file %s", outputName)
+
+			lint := exec.Command("go", "run", "golang.org/x/tools/cmd/goimports", "-w", outputName)
+			if err := lint.Run(); err != nil {
+				log.Fatal(err)
+			}
+
+			log.Printf("Done file %s", outputName)
+		}(pkg)
+	}
 }
