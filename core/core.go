@@ -3,6 +3,7 @@ package core
 import (
 	"go/ast"
 	"go/types"
+	"strings"
 
 	"golang.org/x/tools/go/packages"
 )
@@ -21,6 +22,10 @@ type Package struct {
 	Types  map[string]TypeI
 	Fields []FieldI
 	Funcs  map[string][]FuncI
+}
+
+func (p *Package) Above(pkg *Package) bool {
+	return strings.HasPrefix(pkg.Pkg.PkgPath, p.Pkg.PkgPath)
 }
 
 type TokenI interface {

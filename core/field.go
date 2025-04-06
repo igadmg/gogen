@@ -12,6 +12,7 @@ type FieldI interface {
 }
 
 type FieldBuilder interface {
+	SetOwnerType(t TypeI)
 	SetPackagedTypeName(name string)
 
 	Prepare(tf TypeFactory) error
@@ -19,6 +20,7 @@ type FieldBuilder interface {
 
 type Field struct {
 	Token
+	OwnerType        TypeI
 	Type             TypeI
 	TypeName         string
 	PackagedTypeName string
@@ -46,6 +48,10 @@ func (f Field) GetTypeName() string {
 
 func (f Field) DeclType() string {
 	return f.decltype
+}
+
+func (f *Field) SetOwnerType(t TypeI) {
+	f.OwnerType = t
 }
 
 func (f *Field) SetPackagedTypeName(name string) {

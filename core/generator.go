@@ -123,6 +123,7 @@ func (g *GeneratorBaseT) NewType(t TypeI, spec *ast.TypeSpec) (TypeI, error) {
 			}
 
 			if fb, ok := f.(FieldBuilder); ok {
+				fb.SetOwnerType(t)
 				tp := strings.Split(f.GetTypeName(), ".")
 				if len(tp) == 1 {
 					fb.SetPackagedTypeName(et.Package.Name + "." + f.GetTypeName())
