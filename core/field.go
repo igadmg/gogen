@@ -6,6 +6,7 @@ type FieldI interface {
 	TokenI
 
 	IsMeta() bool
+	IsArray() bool
 	GetType() TypeI
 	GetTypeName() string
 	DeclType() string
@@ -26,7 +27,7 @@ type Field struct {
 	PackagedTypeName string
 	CallTypeName     string
 	decltype         string
-	IsArray          bool
+	IsArray_         bool
 }
 
 func (f *Field) Clone() any {
@@ -36,6 +37,10 @@ func (f *Field) Clone() any {
 
 func (f Field) IsMeta() bool {
 	return f.TypeName == "ecs.MetaTag"
+}
+
+func (f Field) IsArray() bool {
+	return f.IsArray_
 }
 
 func (f Field) GetType() TypeI {

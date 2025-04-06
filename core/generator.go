@@ -181,7 +181,7 @@ func (g *GeneratorBaseT) NewField(f FieldI, spec *ast.Field) (FieldI, error) {
 			return nil, fmt.Errorf("failed to get call type name")
 		}
 
-		_, ef.IsArray = spec.Type.(*ast.ArrayType)
+		_, ef.IsArray_ = spec.Type.(*ast.ArrayType)
 
 		ef.Tag, _ = ParseTag(spec.Tag)
 		//ef.isComponent = err == nil
