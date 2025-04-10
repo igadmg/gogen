@@ -10,9 +10,9 @@ replace (
 
 require (
 	deedles.dev/xiter v0.2.1
-	github.com/igadmg/goex v0.0.0-20250325133153-61aee7990ef8
+	github.com/igadmg/goex v0.0.0-20250407220752-712c023573b8
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/tools v0.31.0
+	golang.org/x/tools v0.32.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
