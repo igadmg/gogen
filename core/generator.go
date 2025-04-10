@@ -70,6 +70,10 @@ func (g *GeneratorBase) GetPackage() *Package {
 }
 
 func (g *GeneratorBase) LocalTypeName(t TypeI) string {
+	if t == nil {
+		return "<unknown type>"
+	}
+
 	if t.GetPackage() == g.Pkg {
 		return t.GetName()
 	}
