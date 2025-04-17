@@ -17,10 +17,12 @@ import (
 	"github.com/igadmg/goex/pprofex"
 	"github.com/igadmg/gogen/core"
 	"golang.org/x/tools/go/packages"
+	"gonum.org/v1/gonum/graph/encoding/dot"
 )
 
 var (
-	profile_f = flag.Bool("profile", false, "write cpu profile to `file`")
+	profile_f      = flag.Bool("profile", false, "write cpu profile to `file`")
+	no_store_dot_f = flag.Bool("no_store_dot", false, "don't store dot file with class diagram")
 )
 
 func Usage() {
@@ -125,6 +127,27 @@ func Run(g core.Generator, pkgNames []string) {
 		func(pkg *core.Package) {
 			outputName := filepath.Join(pkg.Pkg.Dir, strings.ToLower(baseName))
 			code := g.Generate(pkg)
+
+			if !*no_store_dot_f {
+				go func() {
+					dg := g.Graph()
+
+					// Write the graph to DOT format
+					data, err := dot.Marshal(dg, "", "", "  ")
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					baseName := "0.gen_" + g.Flag() + ".dot"
+					dotName := filepath.Join(pkg.Pkg.Dir, strings.ToLower(baseName))
+					log.Printf("Writing file %s", dotName)
+					err = os.WriteFile(dotName, data, 0644)
+					if err != nil {
+						log.Fatalf("writing output: %s", err)
+					}
+					log.Printf("Done file %s", dotName)
+				}()
+			}
 
 			log.Printf("Formatting file %s", outputName)
 			src, err := format.Source(code.Bytes())

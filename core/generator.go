@@ -12,6 +12,7 @@ import (
 	"github.com/igadmg/goex/astex"
 	"github.com/igadmg/goex/gx"
 	"golang.org/x/tools/go/packages"
+	"gonum.org/v1/gonum/graph"
 )
 
 type TypeFactory interface {
@@ -31,6 +32,7 @@ type Generator interface {
 	Inspect(pkgs []*Package)
 	Prepare()
 	Generate(pkg *Package) bytes.Buffer
+	Graph() graph.Graph
 }
 
 type GeneratorBase struct {
