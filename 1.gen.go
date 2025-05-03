@@ -1,0 +1,3 @@
+package gogen
+
+//go:generate go tool github.com/igadmg/cmd/gogen -ecs ./...
