@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 
 	"deedles.dev/xiter"
 	"github.com/igadmg/goex/gx"
@@ -18,11 +19,13 @@ import (
 	"github.com/igadmg/gogen/core"
 	"golang.org/x/tools/go/packages"
 	"gonum.org/v1/gonum/graph/encoding/dot"
+	"gopkg.in/yaml.v3"
 )
 
 var (
-	profile_f      = flag.Bool("profile", false, "write cpu profile to `file`")
-	no_store_dot_f = flag.Bool("no_store_dot", false, "don't store dot file with class diagram")
+	profile_f       = flag.Bool("profile", false, "write cpu profile to `file`")
+	no_store_dot_f  = flag.Bool("no_store_dot", false, "don't store dot file with class diagram")
+	no_store_yaml_f = flag.Bool("no_store_yaml", false, "don't store yaml file with metadata")
 )
 
 func Usage() {
@@ -123,13 +126,17 @@ func Run(g core.Generator, pkgNames []string) {
 
 	g.Inspect(ppkg)
 
+	var wg sync.WaitGroup
+
 	for _, pkg := range ppkg {
 		func(pkg *core.Package) {
 			outputName := filepath.Join(pkg.Pkg.Dir, strings.ToLower(baseName))
 			code := g.Generate(pkg)
 
 			if !*no_store_dot_f {
+				wg.Add(1)
 				go func() {
+					defer wg.Done()
 					dg := g.Graph()
 
 					// Write the graph to DOT format
@@ -145,6 +152,25 @@ func Run(g core.Generator, pkgNames []string) {
 					if err != nil {
 						log.Fatalf("writing output: %s", err)
 					}
+					log.Printf("Done file %s", dotName)
+				}()
+			}
+
+			if !*no_store_yaml_f {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					baseName := "0.gen_" + g.Flag() + ".yaml"
+					dotName := filepath.Join(pkg.Pkg.Dir, strings.ToLower(baseName))
+					log.Printf("Writing file %s", dotName)
+					file, err := os.Create(dotName)
+					if err != nil {
+						log.Fatalf("writing output: %s", err)
+					}
+					defer file.Close()
+
+					yaml.NewEncoder(file).Encode(g)
+
 					log.Printf("Done file %s", dotName)
 				}()
 			}
@@ -177,4 +203,6 @@ func Run(g core.Generator, pkgNames []string) {
 			log.Printf("Done file %s", outputName)
 		}(pkg)
 	}
+
+	wg.Wait()
 }
