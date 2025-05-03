@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"go/ast"
-	"io"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -34,7 +33,6 @@ type Generator interface {
 	Prepare()
 	Generate(pkg *Package) bytes.Buffer
 
-	Yaml(w io.Writer) error
 	Graph() graph.Graph
 }
 

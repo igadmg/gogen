@@ -4,7 +4,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/igadmg/goecs/ecs/net"
 )
@@ -24,19 +27,22 @@ func Usage() {
 type Server int
 
 func Execute() {
+	sigChan := make(chan os.Signal, 1)
+
+	// Регистрируем сигналы для Windows
+	signal.Notify(sigChan,
+		syscall.SIGINT,  // Ctrl+C
+		syscall.SIGTERM, // Завершение процесса
+		// syscall.SIGBREAK, // Ctrl+Break (раскомментировать если нужно)
+	)
+
 	ctx, cancel := context.WithCancel(context.Background())
 
 	s := net.Server{}
 	server := 0
 	s.Listen(server, ctx)
 
-	/*
-		for {
-			select {
-			case <-ctx.Done():
-
-			}
-		}
-	*/
+	sig := <-sigChan
+	log.Printf("Получен сигнал: %v. Завершение...", sig)
 	cancel()
 }
