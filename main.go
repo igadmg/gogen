@@ -52,7 +52,7 @@ func Execute(fg *flag.FlagSet, generators ...core.Generator) {
 	fg.Parse(os.Args[1:])
 
 	var dir []string
-	args := flag.Args()
+	args := fg.Args()
 	if len(args) > 0 {
 		dir = args
 	} else {
