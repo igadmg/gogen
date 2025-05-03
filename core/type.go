@@ -24,12 +24,12 @@ type TypeBuilder interface {
 }
 
 type Type struct {
-	Token
-	Subclasses []TypeI
-	BaseFields []FieldI // base types go lang way (deprecated for archetype)
-	Extends    []TypeI  // extends for archetypes
-	Fields     []FieldI
-	Funcs      map[string]FuncI
+	Token      `yaml:",inline"`
+	Subclasses []TypeI          `yaml:""`
+	BaseFields []FieldI         `yaml:""` // base types go lang way (deprecated for archetype)
+	Extends    []TypeI          `yaml:""` // extends for archetypes
+	Fields     []FieldI         `yaml:""`
+	Funcs      map[string]FuncI `yaml:""`
 }
 
 var _ TypeI = (*Type)(nil)
