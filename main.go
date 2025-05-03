@@ -19,7 +19,6 @@ import (
 	"github.com/igadmg/gogen/core"
 	"golang.org/x/tools/go/packages"
 	"gonum.org/v1/gonum/graph/encoding/dot"
-	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -35,22 +34,22 @@ func Usage() {
 	flag.PrintDefaults()
 }
 
-func Execute(generators ...core.Generator) {
+func Execute(fg *flag.FlagSet, generators ...core.Generator) {
 	flags := map[string]*bool{}
 	tags := map[string]struct{}{}
 	for _, generator := range generators {
 		for _, tag := range generator.Tags() {
 			tags[tag] = struct{}{}
 		}
-		flags[generator.Flag()] = flag.Bool(generator.Flag(), false, "generate "+generator.Flag()+" code")
+		flags[generator.Flag()] = fg.Bool(generator.Flag(), false, "generate "+generator.Flag()+" code")
 	}
 
 	core.Tags = slices.Collect(maps.Keys(tags))
 
 	log.SetFlags(0)
 	log.SetPrefix("gogen: ")
-	flag.Usage = Usage
-	flag.Parse()
+	fg.Usage = Usage
+	fg.Parse(os.Args[1:])
 
 	var dir []string
 	args := flag.Args()
@@ -162,14 +161,8 @@ func Run(g core.Generator, pkgNames []string) {
 					defer wg.Done()
 					baseName := "0.gen_" + g.Flag() + ".yaml"
 					dotName := filepath.Join(pkg.Pkg.Dir, strings.ToLower(baseName))
-					log.Printf("Writing file %s", dotName)
-					file, err := os.Create(dotName)
-					if err != nil {
-						log.Fatalf("writing output: %s", err)
-					}
-					defer file.Close()
 
-					yaml.NewEncoder(file).Encode(g)
+					//g.Yaml(dotName)
 
 					log.Printf("Done file %s", dotName)
 				}()

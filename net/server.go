@@ -10,12 +10,10 @@ import (
 	"syscall"
 
 	"github.com/igadmg/goecs/ecs/net"
+	"github.com/igadmg/gogen/core"
 )
 
-var (
-	profile_f      = flag.Bool("profile", false, "write cpu profile to `file`")
-	no_store_dot_f = flag.Bool("no_store_dot", false, "don't store dot file with class diagram")
-)
+var ()
 
 func Usage() {
 	fmt.Fprintf(os.Stderr, "Usage of gog:\n")
@@ -24,9 +22,7 @@ func Usage() {
 	flag.PrintDefaults()
 }
 
-type Server int
-
-func Execute() {
+func Execute(fg *flag.FlagSet, generators ...core.Generator) {
 	sigChan := make(chan os.Signal, 1)
 
 	// Регистрируем сигналы для Windows
@@ -39,8 +35,10 @@ func Execute() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	s := net.Server{}
-	server := 0
-	s.Listen(server, ctx)
+	for _, g := range generators {
+		s.Register(g)
+	}
+	go s.Listen(ctx)
 
 	sig := <-sigChan
 	log.Printf("Получен сигнал: %v. Завершение...", sig)

@@ -33,6 +33,7 @@ type Generator interface {
 	Prepare()
 	Generate(pkg *Package) bytes.Buffer
 
+	Yaml(fileName string)
 	Graph() graph.Graph
 }
 
