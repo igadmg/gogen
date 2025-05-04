@@ -23,8 +23,8 @@ import (
 
 var (
 	profile_f       = flag.Bool("profile", false, "write cpu profile to `file`")
-	no_store_dot_f  = flag.Bool("no_store_dot", false, "don't store dot file with class diagram")
-	no_store_yaml_f = flag.Bool("no_store_yaml", false, "don't store yaml file with metadata")
+	no_store_dot_f  = flag.Bool("no_store_dot", true, "don't store dot file with class diagram")
+	no_store_yaml_f = flag.Bool("no_store_yaml", true, "don't store yaml file with metadata")
 )
 
 func Usage() {

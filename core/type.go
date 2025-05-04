@@ -9,6 +9,8 @@ import (
 type TypeI interface {
 	TokenI
 
+	IsZero() bool
+
 	BasesSeq() iter.Seq[FieldI]
 	FieldsSeq() iter.Seq[FieldI]
 	FuncsSeq() iter.Seq[FuncI]
@@ -30,6 +32,7 @@ type Type struct {
 	Extends    []TypeI          `yaml:""` // extends for archetypes
 	Fields     []FieldI         `yaml:""`
 	Funcs      map[string]FuncI `yaml:""`
+	isZero     bool
 }
 
 var _ TypeI = (*Type)(nil)
@@ -53,9 +56,13 @@ func (t *Type) New() *Type {
 	return t
 }
 
-func (t Type) GetName() string {
-	return t.Name
+func (t Type) IsZero() bool {
+	return t.isZero && len(t.BaseFields) == 0
 }
+
+//func (t Type) GetName() string {
+//	return t.Name
+//}
 
 func (t Type) BasesSeq() iter.Seq[FieldI] {
 	return slices.Values(t.BaseFields)

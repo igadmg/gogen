@@ -124,9 +124,11 @@ func (g *GeneratorBaseT) NewType(t TypeI, spec *ast.TypeSpec) (TypeI, error) {
 
 		et.Name = spec.Name.Name
 
+		fieldCount := 0
 		for _, field := range ttype.Fields.List {
 			f, err := g.G.NewField(nil, field)
 			if err != nil {
+				fieldCount++
 				continue
 			}
 
@@ -151,8 +153,10 @@ func (g *GeneratorBaseT) NewType(t TypeI, spec *ast.TypeSpec) (TypeI, error) {
 				continue
 			}
 
+			fieldCount++
 			et.Fields = append(et.Fields, f)
 		}
+		et.isZero = fieldCount == 0
 	}
 
 	return t, nil
