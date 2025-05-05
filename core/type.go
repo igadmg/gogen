@@ -104,5 +104,8 @@ func (t *Type) Prepare(tf TypeFactory) error {
 }
 
 func (t *Type) AddSubclass(s TypeI) {
+	if slices.Contains(t.Subclasses, s) {
+		return // TODO: geeting here is a bad sign if t.Subclasses is big
+	}
 	t.Subclasses = append(t.Subclasses, s)
 }
