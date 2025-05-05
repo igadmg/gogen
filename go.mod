@@ -10,8 +10,8 @@ replace (
 
 require (
 	deedles.dev/xiter v0.2.1
-	github.com/igadmg/goecs v0.0.0-20250503114752-5c40584bf609
-	github.com/igadmg/goex v0.0.0-20250502115452-bd40b01ba4eb
+	github.com/igadmg/goecs v0.0.0-20250504153356-4ed35248a2a6
+	github.com/igadmg/goex v0.0.0-20250504115042-88c40cda4bf5
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/tools v0.32.0
 	gonum.org/v1/gonum v0.16.0
