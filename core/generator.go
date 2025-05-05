@@ -73,6 +73,18 @@ func (g *GeneratorBase) GetPackage() *Package {
 	return g.Pkg
 }
 
+func (g *GeneratorBase) TypeImportName(t TypeI) string {
+	if t == nil {
+		return "<unknown type>"
+	}
+
+	if t.GetPackage() == g.Pkg {
+		return ""
+	}
+
+	return t.GetPackage().Name + "."
+}
+
 func (g *GeneratorBase) LocalTypeName(t TypeI) string {
 	if t == nil {
 		return "<unknown type>"
