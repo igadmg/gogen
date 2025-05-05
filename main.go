@@ -162,6 +162,7 @@ func Run(g core.Generator, pkgNames []string) {
 					baseName := "0.gen_" + g.Flag() + ".yaml"
 					dotName := filepath.Join(pkg.Pkg.Dir, strings.ToLower(baseName))
 
+					// TODO: network comm here
 					//g.Yaml(dotName)
 
 					log.Printf("Done file %s", dotName)
