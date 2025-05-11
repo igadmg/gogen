@@ -82,6 +82,10 @@ func (t Type) GetFieldByTypeName(field_type TypeI, name string) FieldI {
 				return f
 			}
 		}
+	}
+
+	// Last chance to find the field by name
+	for _, f := range t.Fields {
 		if f.GetName() == name {
 			return f
 		}
