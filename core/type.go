@@ -77,6 +77,11 @@ func (t Type) GetFieldByTypeName(field_type TypeI, name string) FieldI {
 		if f.GetType() == field_type {
 			return f
 		}
+		for b := range f.GetType().BasesSeq() {
+			if b.GetType() == field_type {
+				return f
+			}
+		}
 		if f.GetName() == name {
 			return f
 		}
