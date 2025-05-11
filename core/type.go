@@ -72,8 +72,11 @@ func (t Type) FieldsSeq() iter.Seq[FieldI] {
 	return slices.Values(t.Fields)
 }
 
-func (t Type) GetFieldByName(name string) FieldI {
+func (t Type) GetFieldByTypeName(field_type TypeI, name string) FieldI {
 	for _, f := range t.Fields {
+		if f.GetType() == field_type {
+			return f
+		}
 		if f.GetName() == name {
 			return f
 		}
