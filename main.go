@@ -3,6 +3,7 @@ package gogen
 import (
 	"flag"
 	"fmt"
+	"go/ast"
 	"go/format"
 	"log"
 	"maps"
@@ -67,21 +68,20 @@ func Execute(fg *flag.FlagSet, generators ...core.Generator) {
 		}
 	*/
 
-	for _, generator := range generators {
-		if f, ok := flags[generator.Flag()]; !ok || !*f {
-			continue
+	generators = slices.Collect(xiter.Filter(slices.Values(generators), func(g core.Generator) bool {
+		if f, ok := flags[g.Flag()]; !ok || !*f {
+			return false
 		}
 
-		fmt.Printf("Runnug generator %s in %s\n", generator.Flag(), dir)
-		Run(generator, dir)
-	}
+		return true
+	}))
+
+	Run(dir, generators...)
 }
 
-func Run(g core.Generator, pkgNames []string) {
-	baseName := "0.gen_" + g.Flag() + ".go"
-
+func Run(pkgNames []string, generators ...core.Generator) {
 	if *profile_f {
-		defer gx.Must(pprofex.WriteCPUProfile(baseName + ".prof"))()
+		defer gx.Must(pprofex.WriteCPUProfile("gogen"))()
 	}
 
 	cfg := &packages.Config{
@@ -123,80 +123,124 @@ func Run(g core.Generator, pkgNames []string) {
 				return lpkg
 			}))
 
-	g.Inspect(ppkg)
+	Inspect(ppkg, generators...)
 
 	var wg sync.WaitGroup
 
 	for _, pkg := range ppkg {
-		func(pkg *core.Package) {
-			outputName := filepath.Join(pkg.Pkg.Dir, strings.ToLower(baseName))
-			code := g.Generate(pkg)
+		for _, g := range generators {
+			func(g core.Generator, pkg *core.Package) {
+				baseName := "0.gen_" + g.Flag() + ".go"
 
-			if !*no_store_dot_f {
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
-					dg := g.Graph()
+				outputName := filepath.Join(pkg.Pkg.Dir, strings.ToLower(baseName))
+				code := g.Generate(pkg)
 
-					// Write the graph to DOT format
-					data, err := dot.Marshal(dg, "", "", "  ")
-					if err != nil {
-						log.Fatal(err)
-					}
+				if !*no_store_dot_f {
+					wg.Add(1)
+					go func() {
+						defer wg.Done()
+						dg := g.Graph()
 
-					baseName := "0.gen_" + g.Flag() + ".dot"
-					dotName := filepath.Join(pkg.Pkg.Dir, strings.ToLower(baseName))
-					log.Printf("Writing file %s", dotName)
-					err = os.WriteFile(dotName, data, 0644)
-					if err != nil {
-						log.Fatalf("writing output: %s", err)
-					}
-					log.Printf("Done file %s", dotName)
-				}()
-			}
+						// Write the graph to DOT format
+						data, err := dot.Marshal(dg, "", "", "  ")
+						if err != nil {
+							log.Fatal(err)
+						}
 
-			if !*no_store_yaml_f {
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
-					baseName := "0.gen_" + g.Flag() + ".yaml"
-					dotName := filepath.Join(pkg.Pkg.Dir, strings.ToLower(baseName))
+						baseName := "0.gen_" + g.Flag() + ".dot"
+						dotName := filepath.Join(pkg.Pkg.Dir, strings.ToLower(baseName))
+						log.Printf("Writing file %s", dotName)
+						err = os.WriteFile(dotName, data, 0644)
+						if err != nil {
+							log.Fatalf("writing output: %s", err)
+						}
+						log.Printf("Done file %s", dotName)
+					}()
+				}
 
-					// TODO: network comm here
-					//g.Yaml(dotName)
+				if !*no_store_yaml_f {
+					wg.Add(1)
+					go func() {
+						defer wg.Done()
+						baseName := "0.gen_" + g.Flag() + ".yaml"
+						dotName := filepath.Join(pkg.Pkg.Dir, strings.ToLower(baseName))
 
-					log.Printf("Done file %s", dotName)
-				}()
-			}
+						// TODO: network comm here
+						//g.Yaml(dotName)
 
-			log.Printf("Formatting file %s", outputName)
-			src, err := format.Source(code.Bytes())
-			if err != nil {
-				// Should never happen, but can arise when developing this code.
-				// The user can compile the output to see the error.
-				log.Printf("warning: internal error: invalid Go generated: %s", err)
-				log.Printf("warning: compile the package to analyze the error")
+						log.Printf("Done file %s", dotName)
+					}()
+				}
 
-				os.WriteFile(outputName, code.Bytes(), 0644)
-				return
-			}
+				log.Printf("Formatting file %s", outputName)
+				src, err := format.Source(code.Bytes())
+				if err != nil {
+					// Should never happen, but can arise when developing this code.
+					// The user can compile the output to see the error.
+					log.Printf("warning: internal error: invalid Go generated: %s", err)
+					log.Printf("warning: compile the package to analyze the error")
 
-			// Write to file.
-			log.Printf("Writing file %s", outputName)
-			err = os.WriteFile(outputName, src, 0644)
-			if err != nil {
-				log.Fatalf("writing output: %s", err)
-			}
-			log.Printf("Formatting file %s", outputName)
+					os.WriteFile(outputName, code.Bytes(), 0644)
+					return
+				}
 
-			lint := exec.Command("go", "run", "golang.org/x/tools/cmd/goimports", "-w", outputName)
-			if err := lint.Run(); err != nil {
-				log.Fatal(err)
-			}
+				// Write to file.
+				log.Printf("Writing file %s", outputName)
+				err = os.WriteFile(outputName, src, 0644)
+				if err != nil {
+					log.Fatalf("writing output: %s", err)
+				}
+				log.Printf("Formatting file %s", outputName)
 
-			log.Printf("Done file %s", outputName)
-		}(pkg)
+				lint := exec.Command("go", "run", "golang.org/x/tools/cmd/goimports", "-w", outputName)
+				if err := lint.Run(); err != nil {
+					log.Fatal(err)
+				}
+
+				log.Printf("Done file %s", outputName)
+			}(g, pkg)
+		}
 	}
 
 	wg.Wait()
+}
+
+func Inspect(pkgs []*core.Package, generators ...core.Generator) {
+	for _, pkg := range pkgs {
+		for _, file := range pkg.Files {
+			if file.File != nil {
+				ast.Inspect(file.File, func(n ast.Node) bool {
+					switch decl := n.(type) {
+					case *ast.File:
+						fn := filepath.Base(file.Pkg.Pkg.Fset.Position(decl.Package).Filename)
+						return !strings.HasPrefix(fn, "0.gen")
+					default:
+						return InspectCode(pkg, decl, generators...)
+					}
+				})
+			}
+		}
+	}
+}
+
+func InspectCode(pkg *core.Package, node ast.Node, generators ...core.Generator) (follow bool) {
+	switch decl := node.(type) {
+	case *ast.GenDecl:
+		for _, spec := range decl.Specs {
+			switch tspec := spec.(type) {
+			case *ast.TypeSpec:
+				for _, g := range generators {
+					g.NewType(pkg, nil, tspec)
+				}
+			}
+		}
+		return false
+	case *ast.FuncDecl:
+		for _, g := range generators {
+			g.NewFunc(nil, decl)
+		}
+		return false
+	}
+
+	return true
 }

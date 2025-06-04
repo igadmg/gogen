@@ -15,7 +15,7 @@ type File struct {
 
 type Package struct {
 	Pkg   *packages.Package
-	Name  string
+	Name  string `hash:""`
 	Defs  map[*ast.Ident]types.Object
 	Files []*File
 
@@ -41,9 +41,9 @@ type TokenM interface {
 }
 
 type Token struct {
-	Name    string
-	Tag     Tag
-	Package *Package
+	Name    string   `hash:""`
+	Tag     Tag      `hash:""`
+	Package *Package `hash:""`
 }
 
 type TokenDto struct {

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"go/ast"
-	"path/filepath"
 	"slices"
 	"strings"
 
@@ -17,7 +16,7 @@ import (
 
 type TypeFactory interface {
 	GetPackage() *Package
-	NewType(t TypeI, spec *ast.TypeSpec) (TypeI, error)
+	NewType(pkg *Package, t TypeI, spec *ast.TypeSpec) (TypeI, error)
 	NewField(f FieldI, spec *ast.Field) (FieldI, error)
 	NewFunc(f FuncI, spec *ast.FuncDecl) (FuncI, error)
 
@@ -26,10 +25,11 @@ type TypeFactory interface {
 }
 
 type Generator interface {
+	TypeFactory
+
 	Flag() string
 	Tags() []string
 
-	Inspect(pkgs []*Package)
 	Prepare()
 	Generate(pkg *Package) bytes.Buffer
 
@@ -100,10 +100,7 @@ func (g *GeneratorBase) LocalTypeName(t TypeI) string {
 type GeneratorBaseT struct {
 	GeneratorBase
 
-	G interface {
-		Generator
-		TypeFactory
-	}
+	G Generator
 
 	Types  map[string]TypeI
 	Fields []FieldI
@@ -122,9 +119,12 @@ func MakeGeneratorB(flag string, tags ...string) GeneratorBaseT {
 	}
 }
 
-func (g *GeneratorBaseT) NewType(t TypeI, spec *ast.TypeSpec) (TypeI, error) {
+func (g *GeneratorBaseT) NewType(pkg *Package, t TypeI, spec *ast.TypeSpec) (TypeI, error) {
 	if t == nil {
-		t = NewType(g.Pkg)
+		t = NewType(pkg)
+		defer func() {
+			g.Types[t.GetFullName()] = t
+		}()
 	}
 
 	switch et := t.(type) {
@@ -320,56 +320,4 @@ func (g *GeneratorBaseT) Prepare() {
 			tb.AddSubclass(t)
 		}
 	}
-}
-
-func (g *GeneratorBaseT) Inspect(pkgs []*Package) {
-	g.Pkgs = pkgs
-	for _, pkg := range g.Pkgs {
-		g.Pkg = pkg
-		for _, file := range pkg.Files {
-			// Set the state for this run of the walker.
-			//file.values = nil
-			if file.File != nil {
-				ast.Inspect(file.File, func(n ast.Node) bool {
-					switch decl := n.(type) {
-					case *ast.File:
-						fn := filepath.Base(file.Pkg.Pkg.Fset.Position(decl.Package).Filename)
-						return !strings.HasPrefix(fn, "0.gen")
-					default:
-						return g.InspectCode(decl)
-					}
-				})
-			}
-		}
-	}
-}
-
-func (g *GeneratorBaseT) InspectCode(node ast.Node) (follow bool) {
-	switch decl := node.(type) {
-	case *ast.GenDecl:
-		for _, spec := range decl.Specs {
-			switch tspec := spec.(type) {
-			case *ast.TypeSpec:
-				t, err := g.G.NewType(nil, tspec)
-				if err != nil {
-					continue
-				}
-
-				g.Pkg.Types[t.GetFullName()] = t
-				g.Types[t.GetFullName()] = t
-			}
-		}
-		return false
-	case *ast.FuncDecl:
-		f, err := g.G.NewFunc(nil, decl)
-		if err != nil {
-			return false
-		}
-
-		g.Pkg.Funcs[f.GetName()] = append(g.Pkg.Funcs[f.GetName()], f)
-
-		return false
-	}
-
-	return true
 }
