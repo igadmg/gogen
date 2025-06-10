@@ -29,6 +29,7 @@ var (
 	profile_f       *bool
 	no_store_dot_f  *bool
 	no_store_yaml_f *bool
+	appModTime      time.Time
 )
 
 func Usage() {
@@ -66,6 +67,17 @@ func Execute(fg *flag.FlagSet, generators ...core.Generator) {
 	} else {
 		dir = []string{gx.Must(os.Getwd())}
 	}
+
+	ex, err := os.Executable()
+	if err != nil {
+		panic(err)
+	}
+	pfs, err := os.Stat(ex)
+	if err != nil {
+		panic(err)
+	}
+	appModTime = pfs.ModTime()
+
 	/*
 		// TODO(suzmue): accept other patterns for packages (directories, list of files, import paths, etc).
 		if len(args) == 1 && gog.IsDirectory(args[0]) {
@@ -148,10 +160,14 @@ func Run(pkgNames []string, generators ...core.Generator) {
 			if ipkg, ok := ppkgs[imp.Path]; ok {
 				pkg.ImportedPkgs[imp.Path] = ipkg
 
-				if pkg.ModTime.Compare(ipkg.ModTime) > 0 {
+				if ipkg.ModTime.Compare(pkg.ModTime) > 0 {
 					pkg.ModTime = ipkg.ModTime
 				}
 			}
+		}
+
+		if appModTime.Compare(pkg.ModTime) > 0 {
+			pkg.ModTime = appModTime
 		}
 	}
 
@@ -269,7 +285,6 @@ func InspectCode(pkg *core.Package, node ast.Node, generators ...core.Generator)
 				}
 			case *ast.ImportSpec:
 				pkg.AddImport(tspec)
-				return false
 			}
 		}
 		return false
