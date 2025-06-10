@@ -30,7 +30,6 @@ type Generator interface {
 	Flag() string
 	Tags() []string
 
-	Setup(pkgs []*Package)
 	Prepare()
 	Generate(pkg *Package) bytes.Buffer
 
@@ -39,9 +38,8 @@ type Generator interface {
 }
 
 type GeneratorBase struct {
-	cfg  *packages.Config
-	Pkg  *Package
-	Pkgs map[string]*Package // Package we are scanning.
+	cfg *packages.Config
+	Pkg *Package
 
 	flag string   // cmd line flags
 	tags []string // tag names
@@ -59,13 +57,6 @@ func (g *GeneratorBase) Tags() []string {
 
 func (g *GeneratorBase) GetPackage() *Package {
 	return g.Pkg
-}
-
-func (g *GeneratorBase) Setup(pkgs []*Package) {
-	g.Pkgs = map[string]*Package{}
-	for _, pkg := range pkgs {
-		g.Pkgs[pkg.Pkg.PkgPath] = pkg
-	}
 }
 
 func (g *GeneratorBase) TypeImportName(t TypeI) string {
@@ -280,13 +271,6 @@ func (g *GeneratorBaseT) GetFuncs(t TypeI) []FuncI {
 var reportedTypes map[string]struct{} = map[string]struct{}{}
 
 func (g *GeneratorBaseT) Prepare() {
-	g.Pkg.ImportedPkgs = map[string]*Package{}
-	for _, imp := range g.Pkg.Imports {
-		if pkg, ok := g.Pkgs[imp.Path]; ok {
-			g.Pkg.ImportedPkgs[imp.Path] = pkg
-		}
-	}
-
 	for _, f := range g.Fields {
 		fb, ok := f.(FieldBuilder)
 		if !ok {

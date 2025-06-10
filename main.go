@@ -107,9 +107,9 @@ func Run(pkgNames []string, generators ...core.Generator) {
 		log.Fatalf("error: %d packages matching %v", len(pkgs), strings.Join(pkgNames, " "))
 	}
 
-	ppkgs := []*core.Package{}
+	ppkgs := map[string]*core.Package{}
 	for _, pkg := range pkgs {
-		ppkgs = append(ppkgs, func() *core.Package {
+		ppkgs[pkg.PkgPath] = func() *core.Package {
 			lpkg := core.NewPackage(pkg)
 
 			lpkg.ModTime = time.Time{}
@@ -137,10 +137,23 @@ func Run(pkgNames []string, generators ...core.Generator) {
 			}
 
 			return lpkg
-		}())
+		}()
 	}
 
 	Inspect(ppkgs, generators...)
+
+	for _, pkg := range ppkgs {
+		pkg.ImportedPkgs = map[string]*core.Package{}
+		for _, imp := range pkg.Imports {
+			if ipkg, ok := ppkgs[imp.Path]; ok {
+				pkg.ImportedPkgs[imp.Path] = ipkg
+
+				if pkg.ModTime.Compare(ipkg.ModTime) > 0 {
+					pkg.ModTime = ipkg.ModTime
+				}
+			}
+		}
+	}
 
 	var wg sync.WaitGroup
 
@@ -148,13 +161,13 @@ func Run(pkgNames []string, generators ...core.Generator) {
 		for _, g := range generators {
 			func(g core.Generator, pkg *core.Package) {
 				baseName := "0.gen_" + g.Flag() + ".go"
-				if fs, err := os.Stat(baseName); !errors.Is(err, os.ErrNotExist) {
+				outputName := filepath.Join(pkg.Pkg.Dir, strings.ToLower(baseName))
+				if fs, err := os.Stat(outputName); !errors.Is(err, os.ErrNotExist) {
 					if fs.ModTime().Compare(pkg.ModTime) > 0 {
 						return
 					}
 				}
 
-				outputName := filepath.Join(pkg.Pkg.Dir, strings.ToLower(baseName))
 				code := g.Generate(pkg)
 
 				if !*no_store_dot_f {
@@ -227,10 +240,7 @@ func Run(pkgNames []string, generators ...core.Generator) {
 	wg.Wait()
 }
 
-func Inspect(pkgs []*core.Package, generators ...core.Generator) {
-	for _, g := range generators {
-		g.Setup(pkgs)
-	}
+func Inspect(pkgs map[string]*core.Package, generators ...core.Generator) {
 	for _, pkg := range pkgs {
 		for _, file := range pkg.Files {
 			if file.File != nil {
