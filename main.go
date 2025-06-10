@@ -1,6 +1,7 @@
 package gogen
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"go/ast"
@@ -13,19 +14,21 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"deedles.dev/xiter"
 	"github.com/igadmg/goex/gx"
 	"github.com/igadmg/goex/pprofex"
+	"github.com/igadmg/goex/timeex"
 	"github.com/igadmg/gogen/core"
 	"golang.org/x/tools/go/packages"
 	"gonum.org/v1/gonum/graph/encoding/dot"
 )
 
 var (
-	profile_f       = flag.Bool("profile", false, "write cpu profile to `file`")
-	no_store_dot_f  = flag.Bool("no_store_dot", true, "don't store dot file with class diagram")
-	no_store_yaml_f = flag.Bool("no_store_yaml", true, "don't store yaml file with metadata")
+	profile_f       *bool
+	no_store_dot_f  *bool
+	no_store_yaml_f *bool
 )
 
 func Usage() {
@@ -36,6 +39,10 @@ func Usage() {
 }
 
 func Execute(fg *flag.FlagSet, generators ...core.Generator) {
+	profile_f = fg.Bool("profile", false, "write cpu profile to `file`")
+	no_store_dot_f = fg.Bool("no_store_dot", true, "don't store dot file with class diagram")
+	no_store_yaml_f = fg.Bool("no_store_yaml", true, "don't store yaml file with metadata")
+
 	flags := map[string]*bool{}
 	tags := map[string]struct{}{}
 	for _, generator := range generators {
@@ -100,37 +107,52 @@ func Run(pkgNames []string, generators ...core.Generator) {
 		log.Fatalf("error: %d packages matching %v", len(pkgs), strings.Join(pkgNames, " "))
 	}
 
-	ppkg := slices.Collect(
-		xiter.Map(slices.Values(pkgs),
-			func(pkg *packages.Package) *core.Package {
-				lpkg := &core.Package{
-					Pkg:   pkg,
-					Name:  pkg.Name,
-					Defs:  pkg.TypesInfo.Defs,
-					Files: make([]*core.File, len(pkg.Syntax)),
-					Types: map[string]core.TypeI{},
-					Funcs: map[string][]core.FuncI{},
+	ppkgs := []*core.Package{}
+	for _, pkg := range pkgs {
+		ppkgs = append(ppkgs, func() *core.Package {
+			lpkg := core.NewPackage(pkg)
+
+			lpkg.ModTime = time.Time{}
+			for _, file := range pkg.Syntax {
+				fileName := pkg.Fset.Position(file.Package).Filename
+				if strings.HasPrefix(filepath.Base(fileName), "0.gen_") {
+					continue
 				}
 
-				for i, file := range pkg.Syntax {
-					f := &core.File{
-						File: file,
-						Pkg:  lpkg,
-					}
-					lpkg.Files[i] = f
+				f := &core.File{
+					File:    file,
+					Pkg:     lpkg,
+					ModTime: timeex.EndOfTime,
 				}
 
-				return lpkg
-			}))
+				fileInfo, err := os.Stat(fileName)
+				if err == nil {
+					f.ModTime = fileInfo.ModTime()
+				}
 
-	Inspect(ppkg, generators...)
+				if f.ModTime.Compare(lpkg.ModTime) > 0 {
+					lpkg.ModTime = f.ModTime
+				}
+				lpkg.Files = append(lpkg.Files, f)
+			}
+
+			return lpkg
+		}())
+	}
+
+	Inspect(ppkgs, generators...)
 
 	var wg sync.WaitGroup
 
-	for _, pkg := range ppkg {
+	for _, pkg := range ppkgs {
 		for _, g := range generators {
 			func(g core.Generator, pkg *core.Package) {
 				baseName := "0.gen_" + g.Flag() + ".go"
+				if fs, err := os.Stat(baseName); !errors.Is(err, os.ErrNotExist) {
+					if fs.ModTime().Compare(pkg.ModTime) > 0 {
+						return
+					}
+				}
 
 				outputName := filepath.Join(pkg.Pkg.Dir, strings.ToLower(baseName))
 				code := g.Generate(pkg)
@@ -206,6 +228,9 @@ func Run(pkgNames []string, generators ...core.Generator) {
 }
 
 func Inspect(pkgs []*core.Package, generators ...core.Generator) {
+	for _, g := range generators {
+		g.Setup(pkgs)
+	}
 	for _, pkg := range pkgs {
 		for _, file := range pkg.Files {
 			if file.File != nil {
@@ -232,6 +257,9 @@ func InspectCode(pkg *core.Package, node ast.Node, generators ...core.Generator)
 				for _, g := range generators {
 					g.NewType(pkg, nil, tspec)
 				}
+			case *ast.ImportSpec:
+				pkg.AddImport(tspec)
+				return false
 			}
 		}
 		return false
