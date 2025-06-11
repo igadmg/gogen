@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"go/ast"
 	"go/format"
+	"go/parser"
+	"go/token"
 	"log"
 	"maps"
 	"os"
@@ -107,6 +109,14 @@ func Run(pkgNames []string, generators ...core.Generator) {
 		Mode: packages.NeedName | packages.NeedFiles | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedSyntax,
 		// TODO: Need to think about constants in test files. Maybe write type_string_test.go
 		// in a separate pass? For later.
+		ParseFile: func(fset *token.FileSet, filename string, src []byte) (*ast.File, error) {
+			fn := filepath.Base(filename)
+			if !strings.HasPrefix(fn, "0.gen") {
+				return parser.ParseFile(fset, filename, src, parser.SkipObjectResolution|parser.ParseComments)
+			} else {
+				return parser.ParseFile(fset, filename, src, parser.PackageClauseOnly)
+			}
+		},
 		Tests: false,
 		//BuildFlags: []string{fmt.Sprintf("-tags=%s", strings.Join(tags, " "))},
 		//Logf: g.logf,
